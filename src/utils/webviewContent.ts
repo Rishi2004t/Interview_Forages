@@ -2,10 +2,11 @@ import * as vscode from 'vscode';
 
 export function getWebviewContent(
   webview: vscode.Webview,
-  _context: vscode.ExtensionContext
+  context: vscode.ExtensionContext
 ): string {
   const nonce = getNonce();
-  const csp   = `default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
+  const iconUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'icon.png'));
+  const csp   = `default-src 'none'; img-src ${webview.cspSource} https: data:; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';`;
 
   return /* html */ `<!DOCTYPE html>
 <html lang="en">
@@ -235,7 +236,8 @@ export function getWebviewContent(
         <stop offset="0%" stop-color="#7c6af7"/><stop offset="100%" stop-color="#60a5fa"/>
       </linearGradient></defs>
     </svg>
-    <span class="logo-center">🎯</span>
+    <img src="${iconUri}" alt="Logo" class="logo-center" style="width:40px;height:40px;border-radius:10px;object-fit:contain;" onerror="this.style.display='none'; document.getElementById('fallback-icon').style.display='block';" />
+    <span id="fallback-icon" class="logo-center" style="display:none;">🎯</span>
   </div>
   <div class="status-badge" role="status"><span class="status-dot"></span>InterviewForge Ready</div>
   <section class="hero" aria-labelledby="hero-title">

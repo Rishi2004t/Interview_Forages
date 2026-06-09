@@ -2,7 +2,7 @@
   "name": "interviewforge",
   "displayName": "InterviewForge",
   "description": "AI-powered interview assistance for developers — analyze code, generate questions, and practice in real-time.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "interviewforge",
   "engines": {
     "vscode": "^1.85.0"

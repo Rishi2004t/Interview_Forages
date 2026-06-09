@@ -2,3 +2,10 @@ node_modules/.cache/**
 .vscode-test/**
 **/*.map
 **/*.d.ts
+src/**
+backend/**
+*.vsix
+.gitignore
+tsconfig.json
+render.yaml
+DEPLOYMENT.md

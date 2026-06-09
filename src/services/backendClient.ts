@@ -1,4 +1,4 @@
-import * as http from 'http';
+import * as https from 'https';
 
 // ────────────────────────────────────────────────────────────
 // Types
@@ -26,7 +26,7 @@ export interface BackendError {
 // Constants
 // ────────────────────────────────────────────────────────────
 
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'https://interview-forages.onrender.com';
 
 // ────────────────────────────────────────────────────────────
 // Public API
@@ -56,7 +56,7 @@ function post<T>(path: string, body: unknown): Promise<T> {
     const serialized = JSON.stringify(body);
     const url = new URL(path, BASE_URL);
 
-    const options: http.RequestOptions = {
+    const options: https.RequestOptions = {
       hostname: url.hostname,
       port: url.port,
       path: url.pathname,
@@ -67,7 +67,7 @@ function post<T>(path: string, body: unknown): Promise<T> {
       },
     };
 
-    const req = http.request(options, (res) => {
+    const req = https.request(options, (res) => {
       const chunks: Buffer[] = [];
       res.on('data', (chunk: Buffer) => chunks.push(chunk));
       res.on('end', () => {
