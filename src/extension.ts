@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { registerOpenPanelCommand } from './commands/openPanel';
 import { InterviewSidebarProvider } from './panels/InterviewSidebarProvider';
+import { SessionManager } from './services/sessionState';
 
 /**
  * Called when the extension is activated.
@@ -25,6 +26,12 @@ export function activate(context: vscode.ExtensionContext): void {
   // ── Register commands ─────────────────────────────────────
   registerOpenPanelCommand(context);
   console.log('[InterviewForge] Command registered: interviewforge.openPanel');
+
+  const resetSessionDisposable = vscode.commands.registerCommand('interviewforge.resetSession', () => {
+    SessionManager.getInstance().resetSession();
+  });
+  context.subscriptions.push(resetSessionDisposable);
+  console.log('[InterviewForge] Command registered: interviewforge.resetSession');
 
   // ── Startup notification (dev-mode only) ─────────────────
   // Remove or comment out before shipping to production.

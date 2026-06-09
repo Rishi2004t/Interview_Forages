@@ -2,7 +2,7 @@
   "name": "interviewforge",
   "displayName": "InterviewForge",
   "description": "AI-powered interview assistance for developers — analyze code, generate questions, and practice in real-time.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "interviewforge",
   "repository": {
     "type": "git",
@@ -26,6 +26,12 @@
         "title": "Open Panel",
         "category": "InterviewForge",
         "icon": "$(play)"
+      },
+      {
+        "command": "interviewforge.resetSession",
+        "title": "Reset Session",
+        "category": "InterviewForge",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {

@@ -1,22 +1,14 @@
 import * as vscode from 'vscode';
 import { getWebviewContent } from '../utils/webviewContent';
-import { getActiveFileInfo, getActiveFileContent, ActiveFileContent } from '../services/codeReader';
+import { getActiveFileInfo, getActiveFileContent } from '../services/codeReader';
 import { analyzeCode, generateQuestions, evaluateAnswer, BackendError } from '../services/backendClient';
 import { getHistory, saveSession, clearHistory } from '../services/historyService';
+import { SessionManager } from '../services/sessionState';
 
 // ── Typed inbound message ────────────────────────────────────
 interface WebviewMessage {
   command: string;
   payload?: { answer?: string };
-}
-
-// ── In-memory interview session ──────────────────────────────
-interface InterviewSession {
-  questions:    string[];
-  currentIndex: number;
-  code:         string;
-  fileName:     string;
-  scores:       number[];
 }
 
 /**
@@ -29,9 +21,6 @@ export class InterviewPanel {
   private readonly _panel:   vscode.WebviewPanel;
   private readonly _context: vscode.ExtensionContext;
   private _disposables: vscode.Disposable[] = [];
-
-  private _lastLoadedContent?: ActiveFileContent;
-  private _interview?: InterviewSession;
 
   // ──────────────────────────────────────────────
   // Static factory
@@ -79,6 +68,16 @@ export class InterviewPanel {
       null,
       this._disposables
     );
+    vscode.window.onDidChangeActiveTextEditor(
+      () => this._handleEditorChange(),
+      null,
+      this._disposables
+    );
+    SessionManager.getInstance().onDidResetSession(
+      () => this._send('sessionReset'),
+      null,
+      this._disposables
+    );
   }
 
   // ──────────────────────────────────────────────
@@ -99,6 +98,22 @@ export class InterviewPanel {
     info ? this._send('fileInfo', info) : this._send('noEditor');
   }
 
+  private _handleEditorChange(): void {
+    const session = SessionManager.getInstance();
+    const info = getActiveFileInfo();
+    
+    if (session.fileContent && info) {
+      if (session.fileContent.fileName !== info.fileName) {
+        this._send('fileChanged', {
+          oldFile: session.fileContent.fileName,
+          newFile: info.fileName
+        });
+      }
+    }
+    
+    this._pushFileInfo();
+  }
+
   private _pushHistory(): void {
     this._send('historyUpdated', getHistory(this._context));
   }
@@ -108,6 +123,8 @@ export class InterviewPanel {
   // ──────────────────────────────────────────────
 
   private _handleMessage(msg: WebviewMessage): void {
+    const sessionManager = SessionManager.getInstance();
+
     switch (msg.command) {
       case 'ready':
         this._pushFileInfo();
@@ -117,7 +134,7 @@ export class InterviewPanel {
       case 'loadCode': {
         const content = getActiveFileContent();
         if (content) {
-          this._lastLoadedContent = content;
+          sessionManager.fileContent = content;
           this._send('codeLoaded', content);
         } else {
           this._send('noEditor');
@@ -141,6 +158,22 @@ export class InterviewPanel {
         this._clearHistory();
         break;
 
+      case 'resetSession':
+        vscode.commands.executeCommand('interviewforge.resetSession');
+        break;
+
+      case 'resetAndAnalyzeNewFile':
+        sessionManager.resetSession();
+        this._send('sessionReset');
+        const content = getActiveFileContent();
+        if (content) {
+          sessionManager.fileContent = content;
+          this._send('codeLoaded', content);
+        } else {
+          this._send('noEditor');
+        }
+        break;
+
       default:
         console.warn(`[InterviewForge Panel] Unknown command: ${msg.command}`);
     }
@@ -151,12 +184,14 @@ export class InterviewPanel {
   // ──────────────────────────────────────────────
 
   private async _runGroqAnalysis(): Promise<void> {
-    if (!this._lastLoadedContent) {
+    const sessionManager = SessionManager.getInstance();
+    if (!sessionManager.fileContent) {
       this._send('analysisError', { message: 'No code loaded. Click "Load Current Code" first.' });
       return;
     }
     try {
-      const result = await analyzeCode(this._lastLoadedContent.code);
+      const result = await analyzeCode(sessionManager.fileContent.code);
+      sessionManager.analysis = result;
       this._send('analysisReady', result);
     } catch (err) {
       const e = err as BackendError;
@@ -169,18 +204,18 @@ export class InterviewPanel {
   // ──────────────────────────────────────────────
 
   private async _startInterview(): Promise<void> {
-    if (!this._lastLoadedContent) {
+    const sessionManager = SessionManager.getInstance();
+    if (!sessionManager.fileContent) {
       this._send('interviewError', { message: 'No code loaded. Click "Load Current Code" first.' });
       return;
     }
     try {
-      const questions = await generateQuestions(this._lastLoadedContent.code);
-      this._interview = {
+      const questions = await generateQuestions(sessionManager.fileContent.code);
+      sessionManager.interview = {
         questions,
         currentIndex: 0,
-        code:         this._lastLoadedContent.code,
-        fileName:     this._lastLoadedContent.fileName,
         scores:       [],
+        isComplete:   false,
       };
       this._send('questionReady', { question: questions[0], index: 0, total: questions.length });
     } catch (err) {
@@ -190,8 +225,9 @@ export class InterviewPanel {
   }
 
   private async _submitAnswer(answer: string): Promise<void> {
-    const session = this._interview;
-    if (!session) {
+    const sessionManager = SessionManager.getInstance();
+    const session = sessionManager.interview;
+    if (!session || !sessionManager.fileContent) {
       this._send('interviewError', { message: 'No active interview session.' });
       return;
     }
@@ -202,16 +238,18 @@ export class InterviewPanel {
     const nextIdx    = currentIdx + 1;
 
     try {
-      const result = await evaluateAnswer(session.code, question, answer);
+      const result = await evaluateAnswer(sessionManager.fileContent.code, question, answer);
 
       session.scores.push(result.score);
       session.currentIndex = nextIdx;
+      session.isComplete = isComplete;
 
       if (isComplete) {
         const avg = session.scores.reduce((a, b) => a + b, 0) / session.scores.length;
+        session.finalScore = avg;
         await saveSession(this._context, {
           date:           new Date().toISOString(),
-          fileName:       session.fileName,
+          fileName:       sessionManager.fileContent.fileName,
           averageScore:   Math.round(avg * 10) / 10,
           totalQuestions: session.scores.length,
         });

@@ -222,6 +222,37 @@ export function getWebviewContent(
 
     /* Footer */
     .footer-note{font-size:10px;color:var(--mu);opacity:.45;font-family:var(--mono)}
+
+    /* ── Modals & Banners ── */
+    .file-change-banner{
+      display:flex;flex-direction:column;gap:10px;padding:12px;
+      background:var(--or-bg);border:1px solid var(--or-bd);
+      border-radius:var(--r-sm);color:var(--txt);width:100%;
+    }
+    .file-change-text{font-size:11px;font-weight:600;color:var(--or)}
+    .file-change-actions{display:flex;gap:8px}
+    .btn-banner{padding:6px 12px;font-size:10px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;flex:1;transition:opacity var(--ease)}
+    .btn-banner:hover{opacity:.85}
+    .btn-banner-primary{background:var(--or);color:#fff}
+    .btn-banner-secondary{background:transparent;border:1px solid var(--or);color:var(--or)}
+
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(2px);
+      display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px;
+    }
+    .modal-content{
+      background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);
+      padding:20px;width:100%;max-width:300px;display:flex;flex-direction:column;gap:15px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.5);
+    }
+    .modal-title{font-size:14px;font-weight:700;color:var(--txt)}
+    .modal-actions{display:flex;gap:10px;justify-content:flex-end}
+    .btn-modal{padding:8px 16px;font-size:11px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;transition:opacity var(--ease)}
+    .btn-modal:hover{opacity:.85}
+    .btn-modal-cancel{background:transparent;border:1px solid var(--mu);color:var(--mu)}
+    .btn-modal-danger{background:var(--red);color:#fff}
+
+    .top-actions{display:flex;gap:10px;width:100%}
   </style>
 </head>
 <body>
@@ -249,9 +280,21 @@ export function getWebviewContent(
     <article class="card" role="listitem"><span class="card-icon">💬</span><span class="card-label">Q&amp;A</span><span class="card-desc">AI questions</span></article>
     <article class="card" role="listitem"><span class="card-icon">⚡</span><span class="card-label">Practice</span><span class="card-desc">Live feedback</span></article>
   </div>
-  <button id="btn-open-panel" class="btn-primary" type="button"><span>▶</span> Open Full Panel</button>
+  <div class="top-actions">
+    <button id="btn-open-panel" class="btn-primary" type="button" style="flex:1"><span>▶</span> Open Full Panel</button>
+    <button id="btn-reset-session" class="btn-outlined" type="button" style="width:auto" title="Reset Session"><span>🔄</span></button>
+  </div>
 
   <div class="divider" role="separator"></div>
+
+  <!-- File Change Banner -->
+  <div id="file-change-banner" class="file-change-banner hidden">
+    <div class="file-change-text">A different file has been opened.</div>
+    <div class="file-change-actions">
+      <button id="btn-analyze-new" class="btn-banner btn-banner-primary">Reset & Analyze New</button>
+      <button id="btn-keep-session" class="btn-banner btn-banner-secondary">Keep Current</button>
+    </div>
+  </div>
 
   <!-- File Info Card -->
   <section class="file-card w100" aria-labelledby="fc-title">
@@ -391,6 +434,18 @@ export function getWebviewContent(
   </section>
 
   <p class="footer-note" aria-hidden="true">v0.0.1 · Powered by Groq</p>
+
+  <!-- Modals -->
+  <div id="reset-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-title">Reset all current InterviewForge data?</div>
+      <div class="modal-actions">
+        <button id="btn-modal-cancel" class="btn-modal btn-modal-cancel">Cancel</button>
+        <button id="btn-modal-reset" class="btn-modal btn-modal-danger">Reset</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script nonce="${nonce}">
@@ -447,6 +502,14 @@ const elIvBadge        = document.getElementById('iv-badge');
 const elHistoryEmpty   = document.getElementById('history-empty');
 const elHistoryList    = document.getElementById('history-list');
 const elBtnClearHistory= document.getElementById('btn-clear-history');
+// Session
+const elBtnResetSession= document.getElementById('btn-reset-session');
+const elResetModal     = document.getElementById('reset-modal');
+const elBtnModalCancel = document.getElementById('btn-modal-cancel');
+const elBtnModalReset  = document.getElementById('btn-modal-reset');
+const elFileChangeBanner = document.getElementById('file-change-banner');
+const elBtnAnalyzeNew  = document.getElementById('btn-analyze-new');
+const elBtnKeepSession = document.getElementById('btn-keep-session');
 
 // ── Client state ──────────────────────────────────────────────
 let nextQ = null;
@@ -505,6 +568,21 @@ function renderCode(p) {
   elBtnExplain.disabled      = false;
   elBtnStart.disabled        = false;
   document.getElementById('code-block').scrollTop = 0;
+}
+
+function resetUI() {
+  elCodeSection.classList.add('hidden');
+  elAnalysis.classList.add('hidden');
+  elAnalysisRes.classList.add('hidden');
+  elBtnExplain.disabled = true;
+  elBtnExplain.innerHTML = '🧠 Explain Code';
+  
+  ivState('idle');
+  elBtnStart.disabled = true;
+  elBtnStart.innerHTML = '🚀 Start Mock Interview';
+  elIvBadge.textContent = '5 Questions';
+  nextQ = null;
+  elFileChangeBanner.classList.add('hidden');
 }
 
 // ── Analysis renderers ────────────────────────────────────────
@@ -658,6 +736,19 @@ window.addEventListener('message', ({ data }) => {
     case 'historyUpdated':
       renderHistory(payload);
       break;
+
+    case 'fileChanged':
+      elFileChangeBanner.classList.remove('hidden');
+      break;
+
+    case 'sessionReset':
+      resetUI();
+      // Show short toast or banner
+      const prevMsg = elIvErrorMsg.textContent;
+      elIvErrorMsg.textContent = 'Session reset successfully.';
+      elIvError.classList.remove('hidden');
+      setTimeout(() => elIvError.classList.add('hidden'), 3000);
+      break;
   }
 });
 
@@ -716,6 +807,29 @@ document.getElementById('btn-dismiss-err').addEventListener('click', () => {
 // ── Outbound: history ─────────────────────────────────────────
 elBtnClearHistory.addEventListener('click', () => {
   vscode.postMessage({ command: 'clearHistory' });
+});
+
+// ── Outbound: session ─────────────────────────────────────────
+elBtnResetSession.addEventListener('click', () => {
+  elResetModal.classList.remove('hidden');
+});
+
+elBtnModalCancel.addEventListener('click', () => {
+  elResetModal.classList.add('hidden');
+});
+
+elBtnModalReset.addEventListener('click', () => {
+  elResetModal.classList.add('hidden');
+  vscode.postMessage({ command: 'resetSession' });
+});
+
+elBtnAnalyzeNew.addEventListener('click', () => {
+  elFileChangeBanner.classList.add('hidden');
+  vscode.postMessage({ command: 'resetAndAnalyzeNewFile' });
+});
+
+elBtnKeepSession.addEventListener('click', () => {
+  elFileChangeBanner.classList.add('hidden');
 });
 
 // ── Boot ──────────────────────────────────────────────────────
