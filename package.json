@@ -4,13 +4,17 @@
   "description": "AI-powered interview assistance for developers — analyze code, generate questions, and practice in real-time.",
   "version": "0.0.2",
   "publisher": "interviewforge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Rishi2004t/Interview_Forages"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": ["Other"],
   "icon": "media/icon.png",
   "activationEvents": [
-    "onStartupFinished",
     "onView:interviewforge.sidebarView",
     "onCommand:interviewforge.openPanel"
   ],

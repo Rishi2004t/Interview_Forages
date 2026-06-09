@@ -87,6 +87,11 @@ function post<T>(path: string, body: unknown): Promise<T> {
       });
     });
 
+    req.setTimeout(60000, () => {
+      req.destroy();
+      reject({ message: 'Request timed out. The backend is waking up, try again in a few seconds.' } satisfies BackendError);
+    });
+
     req.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'ECONNREFUSED') {
         reject({ message: 'InterviewForge backend is not running.' } satisfies BackendError);
