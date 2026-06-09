@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!-- Outer target ring -->
+  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5" opacity="0.9"/>
+  <!-- Middle ring -->
+  <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+  <!-- Center dot -->
+  <circle cx="12" cy="12" r="2.5" fill="currentColor"/>
+  <!-- Code bracket left -->
+  <path d="M5 9 L2 12 L5 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+  <!-- Code bracket right -->
+  <path d="M19 9 L22 12 L19 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+</svg>

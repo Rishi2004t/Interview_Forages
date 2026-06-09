@@ -1,0 +1,74 @@
+{
+  "name": "interviewforge",
+  "displayName": "InterviewForge",
+  "description": "AI-powered interview assistance for developers — analyze code, generate questions, and practice in real-time.",
+  "version": "0.0.1",
+  "publisher": "interviewforge",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Other"],
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "onStartupFinished",
+    "onView:interviewforge.sidebarView",
+    "onCommand:interviewforge.openPanel"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "interviewforge.openPanel",
+        "title": "Open Panel",
+        "category": "InterviewForge",
+        "icon": "$(play)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "interviewforge-activitybar",
+          "title": "InterviewForge",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "interviewforge-activitybar": [
+        {
+          "id": "interviewforge.sidebarView",
+          "name": "InterviewForge",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "interviewforge.openPanel",
+          "when": "view == interviewforge.sidebarView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "InterviewForge",
+      "properties": {}
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.x",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  }
+}
